@@ -19,6 +19,8 @@
     --present-bg: #12352a;
     --absent: #ef4b62;
     --absent-bg: #3a1622;
+    --maybe: #f59e0b;
+    --maybe-bg: #3a2e16;
     --unset-bg: #202a38;
   }
   *{box-sizing:border-box;}
@@ -235,6 +237,7 @@
   .persontoggle .mark{font-size:12px;flex-shrink:0;}
   .persontoggle.present{background:var(--present-bg);color:var(--present);}
   .persontoggle.absent{background:var(--absent-bg);color:var(--absent);}
+  .persontoggle.maybe{background:var(--maybe-bg);color:var(--maybe);}
   .persontoggle:hover{border-color:var(--accent);}
   .noroster{
     font-size:12px;
@@ -287,6 +290,7 @@
   <div class="legend">
     <span><span class="dot" style="background:var(--present)"></span>présent(e)</span>
     <span><span class="dot" style="background:var(--absent)"></span>absent(e)</span>
+    <span><span class="dot" style="background:var(--maybe)"></span>je sais pas</span>
     <span>clique sur le nom dans une case pour changer son statut sur ce créneau</span>
   </div>
 
@@ -367,11 +371,13 @@
     
     const cur = state.cells[key][name];
     if(cur === undefined){
-      state.cells[key][name] = true;
+      state.cells[key][name] = true; // Vert (présent)
     } else if(cur === true){
-      state.cells[key][name] = false;
+      state.cells[key][name] = false; // Rouge (absent)
+    } else if(cur === false){
+      state.cells[key][name] = 'maybe'; // Jaune (je sais pas)
     } else {
-      delete state.cells[key][name];
+      delete state.cells[key][name]; // Neutre / Réinitialisé
     }
     save();
   }
@@ -434,8 +440,18 @@
           let persons = '';
           state.people.forEach(name => {
             const st = entry[name];
-            const cls = st === true ? 'present' : (st === false ? 'absent' : '');
-            const mark = st === true ? '✓' : (st === false ? '✕' : '·');
+            let cls = '';
+            let mark = '·';
+            if(st === true){
+              cls = 'present';
+              mark = '✓';
+            } else if(st === false){
+              cls = 'absent';
+              mark = '✕';
+            } else if(st === 'maybe'){
+              cls = 'maybe';
+              mark = '?';
+            }
             persons += `<div class="persontoggle ${cls}" data-day="${escapeAttr(day)}" data-slotidx="${idx}" data-person="${escapeAttr(name)}">
               <span class="name">${escapeHtml(name)}</span><span class="mark">${mark}</span>
             </div>`;
@@ -502,4 +518,4 @@
   });
 </script>
 </body>
-</html> 
+</html>
