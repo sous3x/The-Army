@@ -294,10 +294,10 @@
   <p class="eyebrow">Dispo de la semaine</p>
   <h1>Try Army</h1>
 
-  <!-- Onglets pour basculer d'une équipe à l'autre -->
+  <!-- Onglets TRY et TRYBETA -->
   <div class="team-switch">
-    <button class="team-btn active" id="btnTeam1">Équipe 1</button>
-    <button class="team-btn" id="btnTeam2">Équipe 2</button>
+    <button class="team-btn active" id="btnTeam1">TRY</button>
+    <button class="team-btn" id="btnTeam2">TRYBETA</button>
   </div>
 
   <div class="infobanner">
@@ -337,7 +337,7 @@
 <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, off } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDXYbNjdosVgk_8K-1SVcqOggbR0Lszt_c",
@@ -356,8 +356,8 @@
   const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
   const DEFAULT_SLOTS = ["18h - 19h","19h - 20h","20h - 21h","21h - 22h","22h - 23h"];
 
-  let currentTeam = 'team1'; // 'team1' ou 'team2'
-  let dbRef = ref(db, 'planning'); // Par défaut team1 = 'planning'
+  let currentTeam = 'team1';
+  let dbRef = ref(db, 'planning');
   let currentUnsubscribe = null;
 
   let state = { slots: [...DEFAULT_SLOTS], people: [], cells: {} };
@@ -372,7 +372,6 @@
   const addSlotBtn = document.getElementById('addSlotBtn');
   const syncText = document.getElementById('syncText');
 
-  // Gestion des onglets
   btnTeam1.addEventListener('click', () => switchTeam('team1'));
   btnTeam2.addEventListener('click', () => switchTeam('team2'));
 
@@ -383,15 +382,14 @@
     if(team === 'team1'){
       btnTeam1.classList.add('active');
       btnTeam2.classList.remove('active');
-      dbRef = ref(db, 'planning'); // Équipe 1 reste sur la clé d'origine
+      dbRef = ref(db, 'planning');
     } else {
       btnTeam2.classList.add('active');
       btnTeam1.classList.remove('active');
-      dbRef = ref(db, 'planning_team2'); // Équipe 2 stockée à côté
+      dbRef = ref(db, 'planning_trybeta');
     }
 
-    // Réinitialisation de l'affichage avant synchro
-    gridHost.innerHTML = '<div class="loading">Chargement de l\'équipe...</div>';
+    gridHost.innerHTML = '<div class="loading">Chargement du planning...</div>';
     listenToFirebase();
   }
 
@@ -435,13 +433,13 @@
     
     const cur = state.cells[key][name];
     if(cur === undefined){
-      state.cells[key][name] = true; // Vert
+      state.cells[key][name] = true;
     } else if(cur === true){
-      state.cells[key][name] = false; // Rouge
+      state.cells[key][name] = false;
     } else if(cur === false){
-      state.cells[key][name] = 'maybe'; // Jaune
+      state.cells[key][name] = 'maybe';
     } else {
-      delete state.cells[key][name]; // Reset
+      delete state.cells[key][name];
     }
     save();
   }
