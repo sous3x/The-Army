@@ -45,40 +45,9 @@
     font-weight:700;
     font-size:32px;
     letter-spacing:.01em;
-    margin:0 0 16px;
+    margin:0 0 20px;
     text-transform:uppercase;
   }
-  
-  /* Selecteur d'équipes */
-  .team-switch{
-    display:flex;
-    gap:10px;
-    margin-bottom:20px;
-  }
-  .team-btn{
-    font-family:'Oswald',sans-serif;
-    font-size:16px;
-    letter-spacing:.05em;
-    text-transform:uppercase;
-    padding:10px 20px;
-    background:var(--surface2);
-    color:var(--muted);
-    border:1px solid var(--line);
-    border-radius:8px;
-    cursor:pointer;
-    transition:all .15s ease;
-  }
-  .team-btn:hover{
-    border-color:var(--accent);
-    color:var(--text);
-  }
-  .team-btn.active{
-    background:var(--accent);
-    color:#3a1c0c;
-    border-color:var(--accent);
-    font-weight:700;
-  }
-
   .infobanner{
     display:flex;
     align-items:center;
@@ -214,6 +183,14 @@
     padding:12px 8px;
     text-align:center;
   }
+  .dayhead .date-sub{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--accent);
+    font-weight:normal;
+    margin-top:2px;
+  }
   th.timehead{
     background:var(--surface2);
     width:120px;
@@ -294,12 +271,6 @@
   <p class="eyebrow">Dispo de la semaine</p>
   <h1>Try Army</h1>
 
-  <!-- Onglets TRY et TRYBETA -->
-  <div class="team-switch">
-    <button class="team-btn active" id="btnTeam1">TRY</button>
-    <button class="team-btn" id="btnTeam2">TRYBETA</button>
-  </div>
-
   <div class="infobanner">
     <span class="banner-dot"></span>
     <span>Ce planning est partagé en direct. Envoie ce lien à ta squad : clique sur ton nom pour cocher tes disponibilités !</span>
@@ -339,6 +310,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+  // Configuration Firebase associée à ton projet "The army"
   const firebaseConfig = {
     apiKey: "AIzaSyDXYbNjdosVgk_8K-1SVcqOggbR0Lszt_c",
     authDomain: "the-army-1bacf.firebaseapp.com",
@@ -352,18 +324,13 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+  const dbRef = ref(db, 'planning');
 
   const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
   const DEFAULT_SLOTS = ["18h - 19h","19h - 20h","20h - 21h","21h - 22h","22h - 23h"];
 
-  let currentTeam = 'team1';
-  let dbRef = ref(db, 'planning');
-  let currentUnsubscribe = null;
-
   let state = { slots: [...DEFAULT_SLOTS], people: [], cells: {} };
 
-  const btnTeam1 = document.getElementById('btnTeam1');
-  const btnTeam2 = document.getElementById('btnTeam2');
   const nameAdd = document.getElementById('nameAdd');
   const addPersonBtn = document.getElementById('addPersonBtn');
   const rosterList = document.getElementById('rosterList');
@@ -372,25 +339,24 @@
   const addSlotBtn = document.getElementById('addSlotBtn');
   const syncText = document.getElementById('syncText');
 
-  btnTeam1.addEventListener('click', () => switchTeam('team1'));
-  btnTeam2.addEventListener('click', () => switchTeam('team2'));
+  // Fonction pour calculer les dates de la semaine en cours (du Lundi au Dimanche)
+  function getDatesSemaine() {
+    const aujourdhui = new Date();
+    const dayOfWeek = aujourdhui.getDay(); // 0 = Dimanche, 1 = Lundi, ...
+    const offsetLundi = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    
+    const lundi = new Date(aujourdhui);
+    lundi.setDate(aujourdhui.getDate() + offsetLundi);
 
-  function switchTeam(team){
-    if(currentTeam === team) return;
-    currentTeam = team;
-
-    if(team === 'team1'){
-      btnTeam1.classList.add('active');
-      btnTeam2.classList.remove('active');
-      dbRef = ref(db, 'planning');
-    } else {
-      btnTeam2.classList.add('active');
-      btnTeam1.classList.remove('active');
-      dbRef = ref(db, 'planning_trybeta');
-    }
-
-    gridHost.innerHTML = '<div class="loading">Chargement du planning...</div>';
-    listenToFirebase();
+    return DAYS.map((dayName, index) => {
+      const dateJour = new Date(lundi);
+      dateJour.setDate(lundi.getDate() + index);
+      const strDate = dateJour.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit'
+      });
+      return { name: dayName, dateStr: strDate };
+    });
   }
 
   addPersonBtn.addEventListener('click', addPerson);
@@ -433,13 +399,13 @@
     
     const cur = state.cells[key][name];
     if(cur === undefined){
-      state.cells[key][name] = true;
+      state.cells[key][name] = true; // Vert (présent)
     } else if(cur === true){
-      state.cells[key][name] = false;
+      state.cells[key][name] = false; // Rouge (absent)
     } else if(cur === false){
-      state.cells[key][name] = 'maybe';
+      state.cells[key][name] = 'maybe'; // Jaune (je sais pas)
     } else {
-      delete state.cells[key][name];
+      delete state.cells[key][name]; // Neutre / Réinitialisé
     }
     save();
   }
@@ -481,8 +447,12 @@
   function render(){
     renderRoster();
 
+    const datesSemaine = getDatesSemaine();
+
     let html = '<table><thead><tr><th class="timehead"></th>';
-    DAYS.forEach(d => { html += `<th class="dayhead">${escapeHtml(d)}</th>`; });
+    datesSemaine.forEach(d => { 
+      html += `<th class="dayhead">${escapeHtml(d.name)}<span class="date-sub">${d.dateStr}</span></th>`; 
+    });
     html += '</tr></thead><tbody>';
 
     (state.slots || []).forEach((slot, idx) => {
@@ -566,25 +536,18 @@
     return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
   }
 
-  function listenToFirebase(){
-    if(currentUnsubscribe) currentUnsubscribe();
-
-    currentUnsubscribe = onValue(dbRef, (snapshot) => {
-      const data = snapshot.val();
-      if(data){
-        state = data;
-        if(!state.people) state.people = [];
-        if(!state.slots) state.slots = [...DEFAULT_SLOTS];
-        if(!state.cells) state.cells = {};
-      } else {
-        state = { slots: [...DEFAULT_SLOTS], people: [], cells: {} };
-      }
-      render();
-      syncText.textContent = 'Connecté · Synchro ' + formatTime();
-    });
-  }
-
-  listenToFirebase();
+  // Écoute les changements en temps réel via Firebase
+  onValue(dbRef, (snapshot) => {
+    const data = snapshot.val();
+    if(data){
+      state = data;
+      if(!state.people) state.people = [];
+      if(!state.slots) state.slots = [...DEFAULT_SLOTS];
+      if(!state.cells) state.cells = {};
+    }
+    render();
+    syncText.textContent = 'Connecté · Synchro ' + formatTime();
+  });
 </script>
 </body>
 </html>
