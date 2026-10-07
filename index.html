@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Try Army - Planning</title>
+<title>The Ramy - Planning</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -14,7 +14,8 @@
     --line: #2a3444;
     --text: #eef1f6;
     --muted: #8b93a7;
-    --accent: #ff7a45;
+    --accent: #ff4655; /* Couleur style Riot/Valorant */
+    --accent-lol: #c8aa6e; /* Couleur Gold style LoL */
     --present: #35d499;
     --present-bg: #12352a;
     --absent: #ef4b62;
@@ -36,9 +37,10 @@
     font-family:'JetBrains Mono',monospace;
     font-size:12px;
     letter-spacing:.14em;
-    color:var(--accent);
+    color:var(--current-accent, var(--accent));
     text-transform:uppercase;
     margin:0 0 6px;
+    transition: color 0.3s;
   }
   h1{
     font-family:'Oswald',sans-serif;
@@ -48,18 +50,54 @@
     margin:0 0 20px;
     text-transform:uppercase;
   }
+  
+  /* Onglets */
+  .tabs{
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .tab-btn{
+    font-family:'Oswald',sans-serif;
+    font-size:16px;
+    letter-spacing:.05em;
+    padding:10px 20px;
+    border-radius:8px;
+    background:var(--surface);
+    color:var(--muted);
+    border:1px solid var(--line);
+    cursor:pointer;
+    transition: all 0.2s ease;
+    text-transform:uppercase;
+  }
+  .tab-btn:hover{
+    border-color:var(--muted);
+    color:var(--text);
+  }
+  .tab-btn.active[data-game="valorant"]{
+    background:#ff4655;
+    color:#fff;
+    border-color:#ff4655;
+  }
+  .tab-btn.active[data-game="lol"]{
+    background:#c8aa6e;
+    color:#0b1d28;
+    border-color:#c8aa6e;
+  }
+
   .infobanner{
     display:flex;
     align-items:center;
     gap:10px;
     background:var(--surface2);
     border:1px solid var(--line);
-    border-left:3px solid var(--accent);
+    border-left:3px solid var(--current-accent, var(--accent));
     border-radius:8px;
     padding:10px 14px;
     margin-bottom:16px;
     font-size:13px;
     color:var(--muted);
+    transition: border-color 0.3s;
   }
   .banner-dot{
     width:8px;
@@ -101,12 +139,12 @@
     font-size:14px;
     width:150px;
   }
-  .roster input:focus{outline:none;border-color:var(--accent);}
+  .roster input:focus{outline:none;border-color:var(--current-accent, var(--accent));}
   .roster button.add{
     font-family:'JetBrains Mono',monospace;
     font-size:12px;
-    background:var(--accent);
-    color:#3a1c0c;
+    background:var(--current-accent, var(--accent));
+    color:#0d1117;
     border:none;
     padding:8px 12px;
     border-radius:6px;
@@ -155,7 +193,7 @@
     border-radius:6px;
     cursor:pointer;
   }
-  button.tool:hover{border-color:var(--accent);}
+  button.tool:hover{border-color:var(--current-accent, var(--accent));}
   .grid-wrap{
     overflow-x:auto;
     border:1px solid var(--line);
@@ -187,7 +225,7 @@
     display:block;
     font-family:'JetBrains Mono',monospace;
     font-size:11px;
-    color:var(--accent);
+    color:var(--current-accent, var(--accent));
     font-weight:normal;
     margin-top:2px;
   }
@@ -246,7 +284,7 @@
   .persontoggle.present{background:var(--present-bg);color:var(--present);}
   .persontoggle.absent{background:var(--absent-bg);color:var(--absent);}
   .persontoggle.maybe{background:var(--maybe-bg);color:var(--maybe);}
-  .persontoggle:hover{border-color:var(--accent);}
+  .persontoggle:hover{border-color:var(--current-accent, var(--accent));}
   .noroster{
     font-size:12px;
     color:var(--muted);
@@ -269,7 +307,13 @@
 <body>
 <div class="wrap">
   <p class="eyebrow">Dispo de la semaine</p>
-  <h1>Try Army</h1>
+  <h1 id="titleHeader">VALORANT</h1>
+
+  <!-- Navigation par Onglets -->
+  <div class="tabs">
+    <button class="tab-btn active" data-game="valorant">Valorant</button>
+    <button class="tab-btn" data-game="lol">League of Legends</button>
+  </div>
 
   <div class="infobanner">
     <span class="banner-dot"></span>
@@ -310,7 +354,6 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  // Configuration Firebase associée à ton projet "The army"
   const firebaseConfig = {
     apiKey: "AIzaSyDXYbNjdosVgk_8K-1SVcqOggbR0Lszt_c",
     authDomain: "the-army-1bacf.firebaseapp.com",
@@ -324,13 +367,20 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  const dbRef = ref(db, 'planning');
 
   const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
   const DEFAULT_SLOTS = ["18h - 19h","19h - 20h","20h - 21h","21h - 22h","22h - 23h"];
 
-  let state = { slots: [...DEFAULT_SLOTS], people: [], cells: {} };
+  let currentGame = 'valorant'; // Onglet actif par défaut
+  let currentRef = ref(db, 'planning'); // 'planning' garde les données existantes pour Valorant
 
+  // États distincts en mémoire local
+  let gamesState = {
+    valorant: { slots: [...DEFAULT_SLOTS], people: [], cells: {} },
+    lol: { slots: [...DEFAULT_SLOTS], people: [], cells: {} }
+  };
+
+  const titleHeader = document.getElementById('titleHeader');
   const nameAdd = document.getElementById('nameAdd');
   const addPersonBtn = document.getElementById('addPersonBtn');
   const rosterList = document.getElementById('rosterList');
@@ -338,11 +388,36 @@
   const saveStatus = document.getElementById('saveStatus');
   const addSlotBtn = document.getElementById('addSlotBtn');
   const syncText = document.getElementById('syncText');
+  const tabBtns = document.querySelectorAll('.tab-btn');
 
-  // Fonction pour calculer les dates de la semaine en cours (du Lundi au Dimanche)
+  // Gestion des onglets
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const game = btn.dataset.game;
+      if (game === currentGame) return;
+
+      currentGame = game;
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Mise à jour de la couleur d'accentuation CSS et du titre
+      if(currentGame === 'valorant') {
+        document.documentElement.style.setProperty('--current-accent', 'var(--accent)');
+        titleHeader.textContent = 'VALORANT';
+        currentRef = ref(db, 'planning'); // Nœud historique
+      } else {
+        document.documentElement.style.setProperty('--current-accent', 'var(--accent-lol)');
+        titleHeader.textContent = 'LEAGUE OF LEGENDS';
+        currentRef = ref(db, 'planning_lol'); // Nouveau nœud LoL
+      }
+
+      listenToFirebase();
+    });
+  });
+
   function getDatesSemaine() {
     const aujourdhui = new Date();
-    const dayOfWeek = aujourdhui.getDay(); // 0 = Dimanche, 1 = Lundi, ...
+    const dayOfWeek = aujourdhui.getDay();
     const offsetLundi = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     
     const lundi = new Date(aujourdhui);
@@ -362,7 +437,12 @@
   addPersonBtn.addEventListener('click', addPerson);
   nameAdd.addEventListener('keydown', e => { if(e.key === 'Enter') addPerson(); });
 
+  function getState(){
+    return gamesState[currentGame];
+  }
+
   function addPerson(){
+    const state = getState();
     const val = nameAdd.value.trim();
     if(!val) return;
     if(!state.people) state.people = [];
@@ -373,6 +453,7 @@
   }
 
   function removePerson(name){
+    const state = getState();
     state.people = state.people.filter(p => p !== name);
     if(state.cells){
       Object.keys(state.cells).forEach(key => {
@@ -385,6 +466,7 @@
   }
 
   addSlotBtn.addEventListener('click', () => {
+    const state = getState();
     if(!state.slots) state.slots = [];
     state.slots.push("Nouveau créneau");
     save();
@@ -393,29 +475,32 @@
   function cellKey(day, slotIdx){ return day + "|" + slotIdx; }
 
   function cycleStatus(day, slotIdx, name){
+    const state = getState();
     const key = cellKey(day, slotIdx);
     if(!state.cells) state.cells = {};
     if(!state.cells[key]) state.cells[key] = {};
     
     const cur = state.cells[key][name];
     if(cur === undefined){
-      state.cells[key][name] = true; // Vert (présent)
+      state.cells[key][name] = true;
     } else if(cur === true){
-      state.cells[key][name] = false; // Rouge (absent)
+      state.cells[key][name] = false;
     } else if(cur === false){
-      state.cells[key][name] = 'maybe'; // Jaune (je sais pas)
+      state.cells[key][name] = 'maybe';
     } else {
-      delete state.cells[key][name]; // Neutre / Réinitialisé
+      delete state.cells[key][name];
     }
     save();
   }
 
   function renameSlot(idx, value){
+    const state = getState();
     state.slots[idx] = value;
     save();
   }
 
   function removeSlot(idx){
+    const state = getState();
     state.slots.splice(idx, 1);
     const newCells = {};
     if(state.cells){
@@ -432,6 +517,7 @@
   }
 
   function renderRoster(){
+    const state = getState();
     if(!state.people || state.people.length === 0){
       rosterList.innerHTML = '';
       return;
@@ -446,7 +532,7 @@
 
   function render(){
     renderRoster();
-
+    const state = getState();
     const datesSemaine = getDatesSemaine();
 
     let html = '<table><thead><tr><th class="timehead"></th>';
@@ -524,7 +610,7 @@
 
   function save(){
     saveStatus.textContent = 'Sauvegarde...';
-    set(dbRef, state).then(() => {
+    set(currentRef, getState()).then(() => {
       saveStatus.textContent = 'Enregistré en direct !';
     }).catch(err => {
       saveStatus.textContent = 'Erreur de sauvegarde: ' + err.message;
@@ -536,18 +622,25 @@
     return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
   }
 
-  // Écoute les changements en temps réel via Firebase
-  onValue(dbRef, (snapshot) => {
-    const data = snapshot.val();
-    if(data){
-      state = data;
-      if(!state.people) state.people = [];
-      if(!state.slots) state.slots = [...DEFAULT_SLOTS];
-      if(!state.cells) state.cells = {};
-    }
-    render();
-    syncText.textContent = 'Connecté · Synchro ' + formatTime();
-  });
+  let unsubscribe = null;
+  function listenToFirebase(){
+    if(unsubscribe) unsubscribe();
+    
+    unsubscribe = onValue(currentRef, (snapshot) => {
+      const data = snapshot.val();
+      if(data){
+        gamesState[currentGame] = data;
+        if(!gamesState[currentGame].people) gamesState[currentGame].people = [];
+        if(!gamesState[currentGame].slots) gamesState[currentGame].slots = [...DEFAULT_SLOTS];
+        if(!gamesState[currentGame].cells) gamesState[currentGame].cells = {};
+      }
+      render();
+      syncText.textContent = 'Connecté (' + currentGame.toUpperCase() + ') · Synchro ' + formatTime();
+    });
+  }
+
+  // Écoute initiale au chargement
+  listenToFirebase();
 </script>
 </body>
 </html>
